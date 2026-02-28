@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Simple grid and circle plotter based on JSON input.
 
-Coordinates in the JSON are now provided as `fret` (horizontal position) and
-`string` (vertical position) instead of generic `x`/`y`. Fret corresponds to
-the x-axis and string to the y-axis. Radius and color remain optional.
+Coordinates in the JSON are provided as `fret` (horizontal position)
+and `string` (vertical position). Fret corresponds to the x-axis and string
+to the y-axis. Radius and color remain optional.
 
 Usage:
     python fbchart.py data.json
@@ -60,26 +60,18 @@ def load_data(path):
 def draw_grid(ax, xmin, xmax, ymin, ymax, spacing=1):
     """Draw a grid on the provided axes.
 
-    The y-axis will always have exactly six horizontal lines which are
-    labeled E, A, D, G, B, e (from bottom to top) regardless of the
-    numeric bounds. Vertical lines are drawn using the provided bounds
-    and spacing.
+    Horizontal lines are locked at integer positions 0 through 5, labeled
+    E, A, D, G, B, e from bottom to top. The y-limits passed to this
+    function are ignored; we instead always use the fixed range. Vertical
+    lines are drawn according to the given x bounds and spacing.
     """
-    # vertical lines remain evenly spaced
+    # vertical grid lines based on frets
     for x in range(int(xmin), int(xmax) + 1, spacing):
         ax.axvline(x, color="lightgray", linewidth=0.5)
 
-    # horizontal lines: fixed six with labels
+    # always six horizontal string lines at 0..5
     labels = ["E", "A", "D", "G", "B", "e"]
-    # compute numeric positions to space evenly between ymin and ymax
-    positions = []
-    if ymax > ymin:
-        span = ymax - ymin
-        step = span / (len(labels) - 1)
-        positions = [ymin + i * step for i in range(len(labels))]
-    else:
-        # fallback evenly spaced integers
-        positions = list(range(len(labels)))
+    positions = list(range(len(labels)))
     for pos in positions:
         ax.axhline(pos, color="lightgray", linewidth=0.5)
     ax.set_yticks(positions)
@@ -89,13 +81,11 @@ def draw_grid(ax, xmin, xmax, ymin, ymax, spacing=1):
 def plot_circles(ax, circles):
     """Plot circles specified by list of dicts on the axes.
 
-    Accept both the old (x,y) keys and the new (fret,string) keys for
-    backwards compatibility. ``fret`` maps to the x-coordinate and
-    ``string`` to the y-coordinate.
+    ``fret`` provides the x-coordinate and ``string`` the y-coordinate.
     """
     for circ in circles:
-        x = circ.get("fret", circ.get("x"))
-        y = circ.get("string", circ.get("y"))
+        x = circ.get("fret")
+        y = circ.get("string")
         if x is None or y is None:
             continue
         r = circ.get("radius", 0.5)
@@ -116,17 +106,14 @@ def main():
 
     circles = load_data(path)
 
-    # determine bounds (support new keys)
-    xs = [c.get("fret", c.get("x", 0)) for c in circles if "fret" in c or "x" in c]
-    ys = [c.get("string", c.get("y", 0)) for c in circles if "string" in c or "y" in c]
+    # determine horizontal bounds from fret values; vertical is fixed
+    xs = [c.get("fret", 0) for c in circles if "fret" in c]
+    # we ignore the numeric ys because the grid is fixed at 0..5
     if xs:
         xmin, xmax = min(xs) - 1, max(xs) + 1
     else:
         xmin, xmax = 0, 10
-    if ys:
-        ymin, ymax = min(ys) - 1, max(ys) + 1
-    else:
-        ymin, ymax = 0, 10
+    ymin, ymax = 0, 5  # fixed string range
 
     fig, ax = plt.subplots()
     draw_grid(ax, xmin, xmax, ymin, ymax)
