@@ -65,9 +65,12 @@ def draw_grid(ax, xmin, xmax, ymin, ymax, spacing=1):
     function are ignored; we instead always use the fixed range. Vertical
     lines are drawn according to the given x bounds and spacing.
     """
-    # vertical grid lines based on frets
+    # vertical grid lines based on frets; emphasize zero
     for x in range(int(xmin), int(xmax) + 1, spacing):
-        ax.axvline(x, color="lightgray", linewidth=0.5)
+        if x == 0:
+            ax.axvline(x, color="gray", linewidth=1.5)
+        else:
+            ax.axvline(x, color="lightgray", linewidth=0.5)
 
     # always six horizontal string lines at 0..5
     labels = ["E", "A", "D", "G", "B", "e"]
@@ -82,16 +85,28 @@ def plot_circles(ax, circles):
     """Plot circles specified by list of dicts on the axes.
 
     ``fret`` provides the x-coordinate and ``string`` the y-coordinate.
+    Radius is fixed at 0.4 for every circle; any value in the JSON is
+    ignored. We offset the x position by -0.5 so the marker is centered on
+    the fret line.
     """
     for circ in circles:
-        x = circ.get("fret")
+        x = circ.get("fret") - 0.5  # center the circle on the fret
         y = circ.get("string")
         if x is None or y is None:
             continue
-        r = circ.get("radius", 0.5)
+        r = 0.4
         color = circ.get("color", "blue")
-        circle = plt.Circle((x, y), r, color=color, alpha=0.5)
-        ax.add_patch(circle)
+        # if color is a two-element array, draw left/right halves
+        if isinstance(color, (list, tuple)) and len(color) >= 2:
+            # left half (180° to 360°) and right half (0° to 180°)
+            from matplotlib.patches import Wedge
+            left = Wedge((x, y), r, 90, 270, facecolor=color[0], alpha=0.5, clip_on=False)
+            right = Wedge((x, y), r, -90, 90, facecolor=color[1], alpha=0.5, clip_on=False)
+            ax.add_patch(left)
+            ax.add_patch(right)
+        else:
+            circle = plt.Circle((x, y), r, color=color, alpha=0.5, clip_on=False)
+            ax.add_patch(circle)
 
 
 def main():
@@ -114,6 +129,12 @@ def main():
     else:
         xmin, xmax = 0, 10
     ymin, ymax = 0, 5  # fixed string range
+    # add padding equal to radius so circles aren't clipped
+    pad = 0.4
+    xmin -= pad
+    xmax += pad
+    ymin -= pad
+    ymax += pad
 
     fig, ax = plt.subplots()
     draw_grid(ax, xmin, xmax, ymin, ymax)
@@ -122,8 +143,6 @@ def main():
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
     ax.set_aspect('equal', adjustable='box')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
     ax.set_title('FBChart grid')
 
     plt.show()

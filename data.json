@@ -1,4 +1,6 @@
 [
-    {"fret": 1, "string": "E", "radius": 0.5, "color": "red"},
-    {"fret": 3, "string": "B"}
+    {"fret": 1, "string": "E", "color": ["red", "blue"]},
+    {"fret": 2, "string": "A", "color": "orange"},
+    {"fret": 3, "string": "B"},
+    {"fret": 0, "string": "G", "color": "green"}
 ]
