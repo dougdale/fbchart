@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Simple grid and circle plotter based on JSON input.
 
-The script reads a JSON file containing an array of circle specifications.
-Each spec should have x, y, and optionally radius and color. It then draws
-an evenly spaced grid and places circles accordingly using matplotlib.
+Coordinates in the JSON are now provided as `fret` (horizontal position) and
+`string` (vertical position) instead of generic `x`/`y`. Fret corresponds to
+the x-axis and string to the y-axis. Radius and color remain optional.
 
 Usage:
     python fbchart.py data.json
 
 JSON example:
 [
-    {"x": 1, "y": 2, "radius": 0.5, "color": "red"},
-    {"x": 3, "y": 4}
+    {"fret": 1, "string": 2, "radius": 0.5, "color": "red"},
+    {"fret": 3, "string": 4}
 ]
 
 """
@@ -22,31 +22,80 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+# mapping of string names to y-axis integers
+STRING_MAP = {"E": 0, "A": 1, "D": 2, "G": 3, "B": 4, "e": 5}
+
 
 def load_data(path):
-    """Load JSON file from given path and return list of dicts."""
+    """Load JSON file from given path and return validated list of dicts.
+
+    Strings must be one of E, A, D, G, B, e and will be converted to
+    corresponding y-values 0..5. Existing numeric "string" or "y" values
+    are left alone unless a named string is provided. The returned list has
+    only numeric coordinates (fret/y).
+    """
     with open(path, "r") as f:
         data = json.load(f)
     if not isinstance(data, list):
         raise ValueError("JSON must contain a list of circle specs")
-    return data
+
+    # normalize and validate entries
+    normalized = []
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        item = entry.copy()
+        # process string -> numeric y
+        if "string" in item:
+            val = item["string"]
+            if isinstance(val, str):
+                if val not in STRING_MAP:
+                    raise ValueError(f"Invalid string value '{val}', must be one of {list(STRING_MAP.keys())}")
+                item["string"] = STRING_MAP[val]
+            # otherwise assume numeric and leave it
+        normalized.append(item)
+    return normalized
 
 
 def draw_grid(ax, xmin, xmax, ymin, ymax, spacing=1):
-    """Draw a grid on the provided axes."""
-    # vertical lines
+    """Draw a grid on the provided axes.
+
+    The y-axis will always have exactly six horizontal lines which are
+    labeled E, A, D, G, B, e (from bottom to top) regardless of the
+    numeric bounds. Vertical lines are drawn using the provided bounds
+    and spacing.
+    """
+    # vertical lines remain evenly spaced
     for x in range(int(xmin), int(xmax) + 1, spacing):
         ax.axvline(x, color="lightgray", linewidth=0.5)
-    # horizontal lines
-    for y in range(int(ymin), int(ymax) + 1, spacing):
-        ax.axhline(y, color="lightgray", linewidth=0.5)
+
+    # horizontal lines: fixed six with labels
+    labels = ["E", "A", "D", "G", "B", "e"]
+    # compute numeric positions to space evenly between ymin and ymax
+    positions = []
+    if ymax > ymin:
+        span = ymax - ymin
+        step = span / (len(labels) - 1)
+        positions = [ymin + i * step for i in range(len(labels))]
+    else:
+        # fallback evenly spaced integers
+        positions = list(range(len(labels)))
+    for pos in positions:
+        ax.axhline(pos, color="lightgray", linewidth=0.5)
+    ax.set_yticks(positions)
+    ax.set_yticklabels(labels)
 
 
 def plot_circles(ax, circles):
-    """Plot circles specified by list of dicts on the axes."""
+    """Plot circles specified by list of dicts on the axes.
+
+    Accept both the old (x,y) keys and the new (fret,string) keys for
+    backwards compatibility. ``fret`` maps to the x-coordinate and
+    ``string`` to the y-coordinate.
+    """
     for circ in circles:
-        x = circ.get("x")
-        y = circ.get("y")
+        x = circ.get("fret", circ.get("x"))
+        y = circ.get("string", circ.get("y"))
         if x is None or y is None:
             continue
         r = circ.get("radius", 0.5)
@@ -67,9 +116,9 @@ def main():
 
     circles = load_data(path)
 
-    # determine bounds
-    xs = [c.get("x", 0) for c in circles if "x" in c]
-    ys = [c.get("y", 0) for c in circles if "y" in c]
+    # determine bounds (support new keys)
+    xs = [c.get("fret", c.get("x", 0)) for c in circles if "fret" in c or "x" in c]
+    ys = [c.get("string", c.get("y", 0)) for c in circles if "string" in c or "y" in c]
     if xs:
         xmin, xmax = min(xs) - 1, max(xs) + 1
     else:

@@ -1,4 +1,4 @@
 [
-    {"x": 1, "y": 2, "radius": 0.5, "color": "red"},
-    {"x": 3, "y": 4}
+    {"fret": 1, "string": "E", "radius": 0.5, "color": "red"},
+    {"fret": 3, "string": "B"}
 ]
