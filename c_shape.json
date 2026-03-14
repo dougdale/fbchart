@@ -1,0 +1,14 @@
+[
+    {"fret": 0, "string": "E", "color": ["blue", "orange"]},
+    {"fret": 3, "string": "E", "color": ["orange", "black"]},
+    {"fret": 0, "string": "A", "color": ["blue", "orange"]},
+    {"fret": 3, "string": "A", "color": ["orange", "black"]},
+    {"fret": 0, "string": "D", "color": ["blue", "orange"]},
+    {"fret": 2, "string": "D", "color": ["orange", "black"]},
+    {"fret": 0, "string": "G", "color": ["blue", "orange"]},
+    {"fret": 2, "string": "G", "color": ["orange", "black"]},
+    {"fret": 0, "string": "B", "color": ["blue", "orange"]},
+    {"fret": 3, "string": "B", "color": ["orange", "black"]},
+    {"fret": 0, "string": "e", "color": ["blue", "orange"]},
+    {"fret": 3, "string": "e", "color": ["orange", "black"]}
+]
