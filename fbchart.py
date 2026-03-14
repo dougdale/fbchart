@@ -27,7 +27,11 @@ STRING_MAP = {"E": 0, "A": 1, "D": 2, "G": 3, "B": 4, "e": 5}
 
 
 def load_data(path):
-    """Load JSON file from given path and return validated list of dicts.
+    """Load JSON file from given path and return (note list, title).
+
+    JSON must be an object with keys:
+      "title": chart title (optional),
+      "notes": list of note specs
 
     Strings must be one of E, A, D, G, B, e and will be converted to
     corresponding y-values 0..5. Existing numeric "string" or "y" values
@@ -36,12 +40,17 @@ def load_data(path):
     """
     with open(path, "r") as f:
         data = json.load(f)
-    if not isinstance(data, list):
-        raise ValueError("JSON must contain a list of circle specs")
 
-    # normalize and validate entries
+    if not isinstance(data, dict):
+        raise ValueError("JSON must be an object with 'notes' and optional 'title'")
+
+    title = data.get("title")
+    notes = data.get("notes")
+    if not isinstance(notes, list):
+        raise ValueError("JSON 'notes' key must contain a list of note specs")
+
     normalized = []
-    for entry in data:
+    for entry in notes:
         if not isinstance(entry, dict):
             continue
         item = entry.copy()
@@ -54,7 +63,7 @@ def load_data(path):
                 item["string"] = STRING_MAP[val]
             # otherwise assume numeric and leave it
         normalized.append(item)
-    return normalized
+    return normalized, title
 
 
 def draw_grid(ax, xmin, xmax, ymin, ymax, spacing=1):
@@ -81,21 +90,21 @@ def draw_grid(ax, xmin, xmax, ymin, ymax, spacing=1):
     ax.set_yticklabels(labels)
 
 
-def plot_circles(ax, circles):
-    """Plot circles specified by list of dicts on the axes.
+def plot_notes(ax, notes):
+    """Plot notes specified by list of dicts on the axes.
 
     ``fret`` provides the x-coordinate and ``string`` the y-coordinate.
-    Radius is fixed at 0.4 for every circle; any value in the JSON is
+    Radius is fixed at 0.4 for every note; any value in the JSON is
     ignored. We offset the x position by -0.5 so the marker is centered on
     the fret line.
     """
-    for circ in circles:
-        x = circ.get("fret") - 0.5  # center the circle on the fret
-        y = circ.get("string")
+    for note in notes:
+        x = note.get("fret") - 0.5  # center the note on the fret
+        y = note.get("string")
         if x is None or y is None:
             continue
         r = 0.4
-        color = circ.get("color", "blue")
+        color = note.get("color", "blue")
         # if color is a two-element array, draw left/right halves
         if isinstance(color, (list, tuple)) and len(color) >= 2:
             # left half (180° to 360°) and right half (0° to 180°)
@@ -119,10 +128,10 @@ def main():
         print(f"File {path} does not exist")
         sys.exit(1)
 
-    circles = load_data(path)
+    notes, title = load_data(path)
 
     # determine horizontal bounds from fret values; vertical is fixed
-    xs = [c.get("fret", 0) for c in circles if "fret" in c]
+    xs = [n.get("fret", 0) for n in notes if "fret" in n]
     # we ignore the numeric ys because the grid is fixed at 0..5
     if xs:
         xmin, xmax = min(xs) - 1, max(xs) + 1
@@ -138,12 +147,12 @@ def main():
 
     fig, ax = plt.subplots()
     draw_grid(ax, xmin, xmax, ymin, ymax)
-    plot_circles(ax, circles)
+    plot_notes(ax, notes)
 
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
     ax.set_aspect('equal', adjustable='box')
-    ax.set_title('FBChart grid')
+    ax.set_title(title or 'FBChart grid')
 
     plt.show()
 
